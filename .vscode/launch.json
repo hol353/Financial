@@ -1,0 +1,23 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": ".NET Core Launch (console)",
+            "type": "coreclr",
+            "request": "launch",
+            //"preLaunchTask": "build",
+            "program": "${workspaceRoot}/ImportTransactions/bin/Debug/net8.0/ImportTransactions.dll",
+            "args": [
+                        "C:/Users/Dean/Downloads/20240420_071705_12298018_S26_E3HXB0WQ.csv",
+                        "C:/Users/Dean/Downloads/20240420_071702_12298018_S21_NSJX4B3X.csv",
+                        "C:/Users/Dean/Downloads/20240420_071656_12298018_S13_4NUQI35F.csv"
+                    ],
+            "cwd": "${workspaceRoot}/ImportTransactions/bin/Debug/net8.0",
+            "stopAtEntry": false,
+            "externalConsole": true
+        }
+    ]
+}
