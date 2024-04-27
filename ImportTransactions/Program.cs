@@ -1,28 +1,16 @@
-﻿using System.Linq.Expressions;
-using System.Reflection;
-using System.Transactions;
+﻿using System.Reflection;
 using ImportTransactions;
 
-
+/// Main entry point
 try
 {
-    string? directoryName = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-    if (directoryName == null)
-    throw new Exception("Invalid assembly location");
-
+    string? directoryName = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? throw new Exception("Invalid assembly location");
     string fileName = Path.Combine(directoryName, "Cash book.xlsx");
-    if (!File.Exists(fileName))
-        throw new Exception($"Cannot find file {fileName}");
-    Transactions transactions = new(fileName);
 
-    foreach (var arg in args)
-    {
-        Console.WriteLine($"Importing {arg}...");
-        transactions.Import(arg);
-    }
-
-    Console.WriteLine($"Saving {fileName}");
-    transactions.Write();
+    var transactions = Excel.Read<Transaction>(fileName, "Transactions");
+    var transactionsToImport = BankTransactionFile.Read(args);
+    var mergedTransactions = Transactions.Merge(transactions, transactionsToImport);
+    Excel.Write(fileName, "Transactions", transactions);
 }
 catch (Exception err)
 {

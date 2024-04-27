@@ -8,6 +8,18 @@ namespace ImportTransactions;
 public class BankTransactionFile
 {
     /// <summary>
+    /// Merge transactions.
+    /// </summary>
+    /// <param name="fileNames"></param>
+    public static IEnumerable<Transaction> Read(IEnumerable<string> fileNames)
+    {
+        IEnumerable<Transaction> transactionsToImport = [];
+        foreach (var fileName in fileNames)
+            transactionsToImport = transactionsToImport.Concat(Read(fileName));
+        return transactionsToImport.OrderBy(transation => transation.Date);
+    }
+
+    /// <summary>
     /// Read transactions from a bank file.
     /// </summary>
     /// <param name="fileName">The file name to read.</param>
