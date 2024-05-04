@@ -9,8 +9,13 @@ try
 
     var transactions = Excel.Read<Transaction>(fileName, "Transactions");
     var transactionsToImport = BankTransactionFile.Read(args);
+
+    // temporary write to csv 
+    
+    Csv.Write(Path.Combine(directoryName, "TransactionsToImport.csv"), transactionsToImport);
+
     var mergedTransactions = Transactions.Merge(transactions, transactionsToImport);
-    Excel.Write(fileName, "Transactions", transactions);
+    Excel.Write(fileName, "Transactions", mergedTransactions);
 }
 catch (Exception err)
 {

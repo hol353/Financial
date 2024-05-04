@@ -67,14 +67,14 @@ public class Excel
 
             IXLWorksheet workSheet = workBook.Worksheet(sheetName);
 
-            var rows = workSheet.Rows();
+            var rows = workSheet.Rows();   
             var cells = rows.Cells();
             IXLCell cell;
             if (cells.Any())
                 cell = cells.First();
             else
                 cell = workSheet.Cell("A1");
-            cell.InsertTable(transactions);
+            cell.InsertData(transactions);
 
             if (File.Exists(filePath))
                 workBook.Save();
