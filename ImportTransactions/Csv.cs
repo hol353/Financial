@@ -21,15 +21,15 @@ public class Csv
                 if (columnMap != null && columnMap.TryGetValue(propertyName, out string? name))
                     propertyName = name;
                 int columnIndex = parser.GetColumnIndex(propertyName);
-                if (columnIndex == -1)
-                    throw new Exception($"Cannot find property {propertyName} in type {dataRow.GetType().Name}");
-
-                if (property.PropertyType == typeof(double))
-                    property.SetValue(dataRow, Convert.ToDouble(parser[columnIndex]));
-                else if (property.PropertyType == typeof(DateTime))
-                    property.SetValue(dataRow, DateTime.Parse(parser[columnIndex]));
-                else
-                    property.SetValue(dataRow, parser[columnIndex]);
+                if (columnIndex != -1)
+                {
+                    if (property.PropertyType == typeof(double))
+                        property.SetValue(dataRow, Convert.ToDouble(parser[columnIndex]));
+                    else if (property.PropertyType == typeof(DateTime))
+                        property.SetValue(dataRow, DateTime.Parse(parser[columnIndex]));
+                    else
+                        property.SetValue(dataRow, parser[columnIndex]);
+                }
             }
 
             data.Add(dataRow);

@@ -17,7 +17,8 @@ public class Excel
         // Create a new DataTable.
         List<T> data = [];
 
-        var properties = typeof(T).GetProperties(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+        var properties = typeof(T).GetProperties(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public)
+                                  .Where(p => p.CanWrite);
 
         // Loop through the Worksheet rows.
         List<string>? columnNames = null;

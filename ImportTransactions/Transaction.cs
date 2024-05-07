@@ -15,6 +15,10 @@ public class Transaction : IEquatable<Transaction>
 
     public double Balance { get; set; }
 
+    public string Category { get; set; } = string.Empty;    
+
+    public string TransactionType => Amount < 0 ? "Expense" : "Income";
+
     /// <summary>
     /// Tests equality between this transaction and another.
     /// </summary>

@@ -8,5 +8,10 @@
   <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.102.2" />
     <PackageReference Include="GenericParsing" Version="1.5.0" />
+    <PackageReference Include="Microsoft.Extensions.ML" Version="3.0.1" />
+    <PackageReference Include="Microsoft.ML" Version="3.0.1" />
+    <PackageReference Include="Microsoft.ML.AutoML" Version="0.21.1" />
+    <PackageReference Include="Microsoft.ML.TorchSharp" Version="0.21.1" />
+    <PackageReference Include="TorchSharp-cuda-windows" Version="0.102.4" />
   </ItemGroup>
 </Project>

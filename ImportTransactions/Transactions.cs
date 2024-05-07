@@ -1,4 +1,9 @@
-﻿namespace ImportTransactions;
+﻿using Microsoft.ML;
+using Microsoft.ML.Data;
+using Microsoft.ML.TorchSharp;
+using Microsoft.ML.TorchSharp.NasBert;
+
+namespace ImportTransactions;
 
 /// <summary>
 /// Methods that work on collections of transactions.
