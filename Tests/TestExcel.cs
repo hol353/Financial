@@ -1,5 +1,5 @@
 using System.Reflection;
-using ImportTransactions;
+using Finance;
 
 namespace Tests;
 

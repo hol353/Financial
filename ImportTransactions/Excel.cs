@@ -1,10 +1,16 @@
 ﻿using ClosedXML.Excel;
-using DocumentFormat.OpenXml.Spreadsheet;
 
-namespace ImportTransactions;
+namespace Finance;
 
 public class Excel
 {
+    /// <summary>
+    /// Read a flat table from an Excel spreadsheet.
+    /// </summary>
+    /// <typeparam name="T">The type to read the data into.</typeparam>
+    /// <param name="filePath">The name and path of the file to read.</param>
+    /// <param name="sheetName">The name of the worksheet to read.</param>
+    /// <returns>A collection of objects of type T.</returns>
     public static IEnumerable<T> Read<T>(string filePath, string sheetName) where T : new()
     {
         // Open the Excel file using ClosedXML.
@@ -53,7 +59,14 @@ public class Excel
         return data;
     }
 
-    public static void Write<T>(string filePath, string sheetName, IEnumerable<T> transactions)
+    /// <summary>
+    /// Write a collection of objects to an Excel spreadsheet.
+    /// </summary>
+    /// <typeparam name="T">The type of the objects.</typeparam>
+    /// <param name="filePath">The file name and path of the spreadsheet to write to.</param>
+    /// <param name="sheetName">The worksheet to write to.</param>
+    /// <param name="objects">The collection of objects to write.</param>
+    public static void Write<T>(string filePath, string sheetName, IEnumerable<T> objects)
     {
         XLWorkbook? workBook = null;
         try
@@ -75,7 +88,7 @@ public class Excel
                 cell = cells.First();
             else
                 cell = workSheet.Cell("A1");
-            cell.InsertData(transactions);
+            cell.InsertData(objects);
 
             if (File.Exists(filePath))
                 workBook.Save();

@@ -1,4 +1,4 @@
-using ImportTransactions;
+using Finance;
 
 namespace Tests;
 

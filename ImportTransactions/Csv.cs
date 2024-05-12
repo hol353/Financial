@@ -1,15 +1,22 @@
 using GenericParsing;
 
-namespace ImportTransactions;
+namespace Finance;
 
 public class Csv
 {
-    public static IEnumerable<T> Read<T>(string fileName, Dictionary<string, string>? columnMap = null) where T : new()
+    /// <summary>
+    /// Read a .csv file.
+    /// </summary>
+    /// <typeparam name="T">The type to read the data into.</typeparam>
+    /// <param name="filePath">The file name and path to read data from.</param>
+    /// <param name="columnMap">A column name map to convert from csv column headings to object properties</param>
+    /// <returns>A collection of objects read.</returns>
+    public static IEnumerable<T> Read<T>(string filePath, Dictionary<string, string>? columnMap = null) where T : new()
     {
         List<T> data = [];
         var properties = typeof(T).GetProperties(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
 
-        using GenericParserAdapter parser = new(fileName);
+        using GenericParserAdapter parser = new(filePath);
         parser.FirstRowHasHeader = true;
         parser.TrimResults = true;
         while (parser.Read())
@@ -35,10 +42,17 @@ public class Csv
             data.Add(dataRow);
         }
         if (data == null)
-            throw new Exception($"Empty file: {fileName}");
+            throw new Exception($"Empty file: {filePath}");
         return data;
     }
 
+    /// <summary>
+    /// Write data to a .csv file.
+    /// </summary>
+    /// <typeparam name="T">The type of the object instances.</typeparam>
+    /// <param name="filePath">The file name and path to write to.</param>
+    /// <param name="data">The data to write.</param>
+    /// <param name="dateFormat">The formmat to use when writing dates.</param>
     public static void Write<T>(string filePath, IEnumerable<T> data, string dateFormat="yyyy-MM-dd")
     {
         using StreamWriter writer = new(filePath); 

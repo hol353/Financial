@@ -1,19 +1,30 @@
-﻿using ImportTransactions;
-using Microsoft.ML;
+﻿using Microsoft.ML;
 using Microsoft.ML.AutoML;
 
-namespace MLSample.TransactionTagging.Core
+namespace Finance
 {
+    /// <summary>
+    /// A training service for an based bank transaction category prediction.
+    /// </summary>
     public class BankTransactionTrainingService
     {
         private readonly MLContext _mlContext;
-        private IDataView _trainingDataView;
+        private IDataView? _trainingDataView;
 
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        /// <param name="mlContext">The ML context.</param>
         public BankTransactionTrainingService(MLContext mlContext)
         {
             _mlContext = mlContext;
         }
 
+        /// <summary>
+        /// Manually train the ML engine.
+        /// </summary>
+        /// <param name="trainingData">The training data to use.</param>
+        /// <returns>A transformer that can be used to do the prediction.</returns>
         public ITransformer ManualTrain(IEnumerable<Transaction> trainingData)
         {
             // Configure ML pipeline
@@ -25,6 +36,12 @@ namespace MLSample.TransactionTagging.Core
             return trainingPipeline.Fit(_trainingDataView);
         }
 
+        /// <summary>
+        /// An auto-trainer method.
+        /// </summary>
+        /// <param name="trainingData">The training data to use.</param>
+        /// <param name="maxTimeInSec">Maximum amount of time (sec) for the training.</param>
+        /// <returns></returns>
         public ITransformer AutoTrain(IEnumerable<Transaction> trainingData, uint maxTimeInSec)
         {
             _trainingDataView = _mlContext.Data.LoadFromEnumerable(trainingData);
@@ -42,12 +59,6 @@ namespace MLSample.TransactionTagging.Core
 
             var result = experiment.Execute(_trainingDataView, columnInfo);
             return result.BestRun.Model;
-        }
-
-        public void SaveModel(string modelSavePath, ITransformer model)
-        {
-            // Save training model to disk.
-            _mlContext.Model.Save(model, _trainingDataView.Schema, modelSavePath);
         }
 
         private IEstimator<ITransformer> LoadDataProcessPipeline(MLContext mlContext)

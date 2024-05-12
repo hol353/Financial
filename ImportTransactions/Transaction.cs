@@ -1,23 +1,27 @@
-namespace ImportTransactions;
+namespace Finance;
 
 /// <summary>
 /// Encapsulates a single bank transaction, with equality functionality.
 /// </summary>
 public class Transaction : IEquatable<Transaction>
 {
+    /// <summary>The account number.</summary>
     public string Account { get; set; } = string.Empty;
 
+    /// <summary>The date of the transaction.</summary>
     public DateTime Date { get; set; }
 
+    /// <summary>The amount of the transaction.</summary>
     public double Amount { get; set; }
 
+    /// <summary>The reference (description) of the transaction.</summary>
     public string Reference { get; set; } = string.Empty;
 
+    /// <summary>The balance of the account.</summary>
     public double Balance { get; set; }
 
+    /// <summary>The category of the transaction.</summary>
     public string Category { get; set; } = string.Empty;    
-
-    public string TransactionType => Amount < 0 ? "Expense" : "Income";
 
     /// <summary>
     /// Tests equality between this transaction and another.

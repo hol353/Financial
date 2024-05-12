@@ -1,6 +1,5 @@
 ﻿using System.Reflection;
-using ImportTransactions;
-using MLSample.TransactionTagging.Core;
+using Finance;
 
 /// Main entry point
 try
@@ -10,10 +9,8 @@ try
 
     var transactions = Excel.Read<Transaction>(fileName, "Transactions");
     var transactionsToImport = BankTransactionFile.Read(args);
-    foreach (var transaction in transactionsToImport)
-        transaction.Category = null;
     var mergedTransactions = Transactions.Merge(transactions, transactionsToImport);
-    CategoryPredictionService.Predict(mergedTransactions);
+    Transactions.PredictCategories(mergedTransactions);
     Excel.Write(fileName, "Transactions", mergedTransactions);
 }
 catch (Exception err)

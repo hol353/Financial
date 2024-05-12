@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace ImportTransactions;
+namespace Finance;
 
 /// <summary>
 /// Encapsulates a file, containing transactions, that has been exported from a bank. Typically a .csv file.
@@ -61,6 +61,11 @@ public class BankTransactionFile
             };            
             transactions = Csv.Read<Transaction>(fileName, columnMap);
         }
+
+        // Empty the category property. Some banks supply a category but we don't want to use it.
+        // Use our category predicted instead.
+        foreach (var transaction in transactions)
+            transaction.Category = string.Empty;
 
         // DataTable needs to be sorted from lowest to highest date. Reverse order if needed.
         if (transactions.First().Date > transactions.Last().Date)
