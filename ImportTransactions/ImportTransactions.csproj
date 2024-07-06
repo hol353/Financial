@@ -7,6 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.102.2" />
+    <PackageReference Include="CommandLineParser" Version="2.9.1" />
     <PackageReference Include="GenericParsing" Version="1.5.0" />
     <PackageReference Include="Microsoft.Extensions.ML" Version="3.0.1" />
     <PackageReference Include="Microsoft.ML" Version="3.0.1" />

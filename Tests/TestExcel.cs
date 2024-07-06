@@ -46,7 +46,7 @@ public class TestExcel
         string fileName = Path.Combine(Path.GetTempPath(), "test.xlsx");
         Excel.Write(fileName, "Test", data);
        
-        data = Excel.Read<Test>(fileName, "Test").ToArray();
+        data = Excel.Read<Test>(fileName, "Test", hasHeadings: false).ToArray();
 
         Assert.AreEqual(1.0, data[0].A);
         Assert.AreEqual(2.0, data[0].B);

@@ -10,8 +10,9 @@ public class Excel
     /// <typeparam name="T">The type to read the data into.</typeparam>
     /// <param name="filePath">The name and path of the file to read.</param>
     /// <param name="sheetName">The name of the worksheet to read.</param>
+    /// <param name="startRowNumber">The starting row number to read from.</param>
     /// <returns>A collection of objects of type T.</returns>
-    public static IEnumerable<T> Read<T>(string filePath, string sheetName) where T : new()
+    public static IEnumerable<T> Read<T>(string filePath, string sheetName, bool hasHeadings = true) where T : new()
     {
         // Open the Excel file using ClosedXML.
         // Keep in mind the Excel file cannot be open when trying to read it
@@ -27,13 +28,10 @@ public class Excel
                                   .Where(p => p.CanWrite);
 
         // Loop through the Worksheet rows.
-        List<string>? columnNames = null;
         foreach (IXLRow row in workSheet.Rows())
         {
             // Use the first row to add columns to DataTable.
-            if (columnNames == null)
-                columnNames = row.Cells().Select(c => c.GetValue<string>()).ToList();
-            else
+            if (!hasHeadings)
             {
                 // Add rows to DataTable.
                 T dataRow = new();
@@ -54,6 +52,7 @@ public class Excel
 
                 data.Add(dataRow);
             }
+            hasHeadings = false;
         }
 
         return data;
@@ -84,10 +83,7 @@ public class Excel
             var rows = workSheet.Rows();   
             var cells = rows.Cells();
             IXLCell cell;
-            if (cells.Any())
-                cell = cells.First();
-            else
-                cell = workSheet.Cell("A1");
+            cell = workSheet.Cell("A2");
             cell.InsertData(objects);
 
             if (File.Exists(filePath))

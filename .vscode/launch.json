@@ -11,11 +11,10 @@
             //"preLaunchTask": "build",
             "program": "${workspaceRoot}/ImportTransactions/bin/Debug/net8.0/ImportTransactions.dll",
             "args": [
-                        "C:/Users/Dean/Downloads/20240420_071705_12298018_S26_E3HXB0WQ.csv",
-                        "C:/Users/Dean/Downloads/20240420_071702_12298018_S21_NSJX4B3X.csv",
-                        "C:/Users/Dean/Downloads/20240420_071656_12298018_S13_4NUQI35F.csv"
+                        "--cashbook=CashBookNew.xlsx",
+                        "--pattern=*.csv"
                     ],
-            "cwd": "${workspaceRoot}/ImportTransactions/bin/Debug/net8.0",
+            "cwd": "${workspaceRoot}/Data",
             "stopAtEntry": false,
             "externalConsole": true
         }
