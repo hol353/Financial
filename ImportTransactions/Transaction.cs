@@ -27,18 +27,31 @@ public class Transaction : IEquatable<Transaction>
     /// Tests equality between this transaction and another.
     /// </summary>
     /// <param name="other">The other transaction.</param>
+    /// <param name="useDate">Use date to do match?</param>
     /// <returns>True if equal</returns>
     public bool Equals(Transaction? other)
     {
+        return Equals(other, useDate: true);
+    }
+
+    /// <summary>
+    /// Tests equality between this transaction and another.
+    /// </summary>
+    /// <param name="other">The other transaction.</param>
+    /// <param name="useDate">Use date to do match?</param>
+    /// <returns>True if equal</returns>
+    public bool Equals(Transaction? other, bool useDate)
+    {
         if (other == null)
             throw new Exception("other is null");
-        if (Account == other.Account && Date == other.Date && Amount == other.Amount)
+        if (Account == other.Account && Amount == other.Amount && 
+            (!useDate || Date == other.Date))
         {
             string[] tokens = Reference.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             string[] otherTokens = other.Reference.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
             double percent = tokens.Count(t => otherTokens.Contains(t)) * 1.0 / tokens.Length * 100;
-            return percent > 50;
+            return percent >= 50;
         }
         return false;
     }

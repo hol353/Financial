@@ -37,7 +37,7 @@ public class BankTransactionFile
     /// </summary>
     /// <param name="fileName">The file name to read.</param>
     /// <returns>A DataTable with all transactions.</returns>
-    public static IEnumerable<Transaction>? Read(string path)
+    public static IEnumerable<Transaction> Read(string path)
     {
         List<Transaction>? allTransactions = new();
 

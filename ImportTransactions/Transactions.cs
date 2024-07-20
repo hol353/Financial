@@ -1,5 +1,6 @@
 ﻿using Microsoft.ML;
 using Microsoft.ML.Data;
+using MoreLinq;
 
 namespace Finance;
 
@@ -14,17 +15,39 @@ public class Transactions
     /// <param name="first">The first collection.</param>
     /// <param name="second">The second collection.</param>
     /// <returns>A merged collection (items from second collected added to first collection)</returns>
-    public static IEnumerable<Transaction> Merge(IEnumerable<Transaction> first, IEnumerable<Transaction> second)
+    public static IEnumerable<Transaction> Merge(IEnumerable<Transaction> existingTransactions, IEnumerable<Transaction> newTransactions)
     {
-        if (second.Any())
+        // Find the first matching transaction
+        var firstMatchingTransaction = existingTransactions.FirstOrDefault(t => newTransactions.First().Equals(t)) ?? throw new Exception("Cannot find any overlap between the transactions being imported and the existing ones.");
+
+        // Zip the existing and imported transactions.
+        var zippedTransactions = existingTransactions.SkipWhile(t => t != firstMatchingTransaction)
+                                                     .ZipLongest(newTransactions, (t1,t2) => (t1,t2));
+
+        // Find the first transaction that differs.
+        (Transaction? t1, Transaction? t2) = zippedTransactions.FirstOrDefault((t) => t.t1 == null ? true : !t.t1.Equals(t.t2));
+        
+        // Determine the existing transactions we want to keep.
+        var existingTransactionsToKeep = existingTransactions.TakeWhile(t => t != t1).ToList();
+
+        // Determine the existing transactions we want to remove.
+        var existingTransactionsToRemove = existingTransactions.SkipWhile(t => t != t1).ToList();
+        
+        // Determine the new transactions we want to keep.
+        var newTransactionsToKeep = newTransactions.SkipWhile(t => t != t2);
+
+        // For the new transactions we want to keep, try and find a category from the existing transactions we want to remove.
+        // i.e. assume the date has changed to a newer date.
+        foreach (var newTransaction in newTransactionsToKeep)
         {
-            if (first == null)
-                return second;
-            else
-                return first.Union(second);
+            var matchingTransaction = existingTransactionsToRemove.Find( (t) => t.Equals(newTransaction, useDate: false));
+            if (matchingTransaction != null)
+                newTransaction.Category = matchingTransaction.Category;
         }
-        return first;
+
+        return existingTransactionsToKeep.Concat(newTransactionsToKeep);
     }
+
 
     /// <summary>
     /// Use ML to predict categories for bank transactions.
