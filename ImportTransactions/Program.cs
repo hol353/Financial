@@ -7,37 +7,53 @@ class Program
 
     public class Options
     {
+
+        [Option('c', "cashbook", Required = true, HelpText = "Set the cash book file name to import into.")]
+        public string Cashbook { get; set; } = string.Empty;
+        
         [Option('p', "pattern", Required = false, HelpText = "Set the import file patterns (filespec)")]
         public string? ImportPatterns { get; set; }
-
-        [Option('c', "cashbook", Required = false, HelpText = "Set the cash book file name to import into.")]
-        public string? Cashbook { get; set; }
-
     }
 
 
+    /// <summary>
+    /// Main program entrypoint.
+    /// </summary>
+    /// <param name="args">Command line arguments.</param>
     static void Main(string[] args)
     {
-        /// Main entry point
         try
         {
             Parser.Default.ParseArguments<Options>(args)
                            .WithParsed<Options>(options =>
             {
-                if (options.Cashbook == null)
-                    throw new Exception("No cashbook specified.");
-                if (options.ImportPatterns == null)
-                    throw new Exception("No import patterns (filespecs) specified.");
-
+                // Open the cash book.
                 var transactions = Excel.Read<Transaction>(options.Cashbook, "Transactions");
-                var transactionsToImport = BankTransactionFile.Read(options.ImportPatterns);
-                if (transactionsToImport != null)
+
+                // Import transactions if there are any.
+                if (options.ImportPatterns != null)
                 {
-                    var mergedTransactions = Transactions.Merge(transactions, transactionsToImport)
-                                                         .OrderBy(t => t.Date);
-                    Transactions.PredictCategories(mergedTransactions);
-                    Excel.Write(options.Cashbook, "Transactions", mergedTransactions);
+                    string? directory = Path.GetDirectoryName(options.ImportPatterns);
+                    if (directory == string.Empty || directory == null)
+                        directory = Directory.GetCurrentDirectory();
+                    foreach (var fileName in Directory.GetFiles(directory, Path.GetFileName(options.ImportPatterns)))
+                    {
+                        Console.WriteLine($"Importing transactions from {fileName}");
+                        var transactionsToImport = BankTransactionFile.Read(options.ImportPatterns);
+                        if (transactionsToImport != null)
+                            transactions = Transactions.Merge(transactions, transactionsToImport);
+                    }
                 }
+
+                // Predict missing categories.
+                Transactions.PredictCategories(transactions);
+
+                // Sort the transactions.
+                transactions = Transactions.Sort(transactions);
+
+                // Write spreadsheet.
+                Console.WriteLine($"Write to {options.Cashbook}");
+                Excel.Write(options.Cashbook, "Transactions", transactions);
             });
         }
         catch (Exception err)

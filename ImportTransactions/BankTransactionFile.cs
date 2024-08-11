@@ -85,19 +85,15 @@ public class BankTransactionFile
             if (accountTransactions != null)
             {
                 // Empty the category property. Some banks supply a category but we don't want to use it.
-                // Use our category predicted instead.
+                // Use our predicted category instead.
                 foreach (var transaction in accountTransactions)
                     transaction.Category = string.Empty;
-
-                // DataTable needs to be sorted from lowest to highest date. Reverse order if needed.
-                if (accountTransactions.First().Date > accountTransactions.Last().Date)
-                    accountTransactions = accountTransactions.Reverse();
 
                 allTransactions.AddRange(accountTransactions);            
             }
         }
 
         // Convert the DataTable into a list of transactions.
-        return allTransactions;
+        return Transactions.Sort(allTransactions);
     }
 }

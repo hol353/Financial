@@ -8,14 +8,14 @@
             "name": ".NET Core Launch (console)",
             "type": "coreclr",
             "request": "launch",
-            //"preLaunchTask": "build",
             "program": "${workspaceRoot}/ImportTransactions/bin/Debug/net8.0/ImportTransactions.dll",
             "args": [
-                        "--cashbook=CashBookNew.xlsx",
+                        "--cashbook=CashBook.xlsx",
                         "--pattern=*.csv"
                     ],
             "cwd": "${workspaceRoot}/Data",
             "stopAtEntry": false,
+
             "externalConsole": true
         }
     ]

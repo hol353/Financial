@@ -1,6 +1,8 @@
-﻿using Microsoft.ML;
+﻿using DocumentFormat.OpenXml.Drawing.Diagrams;
+using Microsoft.ML;
 using Microsoft.ML.Data;
 using MoreLinq;
+using Tensorflow;
 
 namespace Finance;
 
@@ -12,42 +14,129 @@ public class Transactions
     /// <summary>
     /// Merge 2 collections of transactions
     /// </summary>
-    /// <param name="first">The first collection.</param>
-    /// <param name="second">The second collection.</param>
-    /// <returns>A merged collection (items from second collected added to first collection)</returns>
-    public static IEnumerable<Transaction> Merge(IEnumerable<Transaction> existingTransactions, IEnumerable<Transaction> newTransactions)
+    /// <param name="existing">The existing transactions collection.</param>
+    /// <param name="newTransactions">The newly imported transactions to merge into existing.</param>
+    /// <returns>A merged collection.</returns>
+    public static IEnumerable<Transaction> Merge(IEnumerable<Transaction> existing1, IEnumerable<Transaction> newTransactions)
     {
-        // Find the first matching transaction
-        var firstMatchingTransaction = existingTransactions.FirstOrDefault(t => newTransactions.First().Equals(t)) ?? throw new Exception("Cannot find any overlap between the transactions being imported and the existing ones.");
+        var existingForAccount = existing1.Where(t => t.Account == newTransactions.First().Account);
+        var existingOtherAccounts = existing1.Where(t => t.Account != newTransactions.First().Account);
 
-        // Zip the existing and imported transactions.
-        var zippedTransactions = existingTransactions.SkipWhile(t => t != firstMatchingTransaction)
-                                                     .ZipLongest(newTransactions, (t1,t2) => (t1,t2));
-
-        // Find the first transaction that differs.
-        (Transaction? t1, Transaction? t2) = zippedTransactions.FirstOrDefault((t) => t.t1 == null ? true : !t.t1.Equals(t.t2));
+        // Because bank transactions can be reordered by the bank and as a result balances can change, need to find
+        // the first new transaction that exists in the existing transaction collection.
         
-        // Determine the existing transactions we want to keep.
-        var existingTransactionsToKeep = existingTransactions.TakeWhile(t => t != t1).ToList();
-
-        // Determine the existing transactions we want to remove.
-        var existingTransactionsToRemove = existingTransactions.SkipWhile(t => t != t1).ToList();
-        
-        // Determine the new transactions we want to keep.
-        var newTransactionsToKeep = newTransactions.SkipWhile(t => t != t2);
-
-        // For the new transactions we want to keep, try and find a category from the existing transactions we want to remove.
-        // i.e. assume the date has changed to a newer date.
-        foreach (var newTransaction in newTransactionsToKeep)
+        Transaction? firstValidNewTransaction = null;
+        foreach (var newTransaction in newTransactions)
         {
-            var matchingTransaction = existingTransactionsToRemove.Find( (t) => t.Equals(newTransaction, useDate: false));
-            if (matchingTransaction != null)
-                newTransaction.Category = matchingTransaction.Category;
+            var matchedExisting = existingForAccount.FirstOrDefault(t => t.Date == newTransaction.Date &&
+                                                                    t.Account == newTransaction.Account &&
+                                                                    t.Amount == newTransaction.Amount &&
+                                                                    t.Balance == newTransaction.Balance);
+            if (matchedExisting != null)
+            {
+                firstValidNewTransaction = newTransaction;
+                break;
+            }
         }
 
-        return existingTransactionsToKeep.Concat(newTransactionsToKeep);
+        if (firstValidNewTransaction == null)
+            throw new Exception("Cannot import new transactions. There needs to be more overlap of existing and new transactions");
+
+        // Skip new transactions before our first valid transaction.
+        newTransactions = newTransactions.SkipWhile(t => t != firstValidNewTransaction);
+
+        // Find first and last transaction date.
+        DateTime firstDate = newTransactions.Min(t => t.Date);
+        DateTime lastDate = newTransactions.Max(t => t.Date);
+
+        // Find existing transactions in the date range.
+        var existingToRemove = existingForAccount.Where(t => t.Date >= firstDate && t.Date <= lastDate);
+
+        // Try and give each new transaction a category from the matching existing transaction.
+        foreach (var importedTransaction in newTransactions)
+        {
+            // Find matching transaction in existing, allowing for date and reference change.
+            var foundTransaction = existingToRemove.FirstOrDefault(t => t.CloseMatch(importedTransaction));
+            if (foundTransaction != null)
+            {
+                // Update category
+                importedTransaction.Category = foundTransaction.Category;
+                importedTransaction.Details = foundTransaction.Details;
+                importedTransaction.InvoiceReceipt = foundTransaction.InvoiceReceipt;
+            }
+            else
+                importedTransaction.Details = "??????";
+        }
+
+        // Return a sorted merged list.
+        var existingToKeep = existingForAccount.Except(existingToRemove);
+        return Sort(existingToKeep.Concat(newTransactions)
+                                  .Concat(existingOtherAccounts));
     }
 
+    /// <summary>
+    /// Sort transactions so that they are in order and their balances are correct.
+    /// Some banks transactions are out-of-order for a given day.
+    /// </summary>
+    /// <param name="transactions">The transactions to sort.</param>
+    public static IEnumerable<Transaction> Sort(IEnumerable<Transaction> transactions)
+    {
+        List<Transaction> sortedTransactions = new();
+        
+        foreach (var account in transactions.Select(t => t.Account)
+                                            .Distinct()
+                                            .Order())
+        {
+            var accountTransactions = transactions.Where(t => t.Account == account)
+                                                  .OrderBy(t => t.Date)
+                                                  .ToList();
+
+            double runningBalance = FindStartingBalance(accountTransactions);
+            
+            // Find the first transaction that matches the running balance.
+            int numTransactionsSorted = 0;
+            Transaction? match;
+            while ((match = accountTransactions.Find(t => Math.Round(t.Balance - t.Amount, 2) == runningBalance)) != null)
+            {
+                // Move transaction to sortedTransactions.
+                sortedTransactions.Add(match);
+                accountTransactions.Remove(match);
+
+                runningBalance += match.Amount;
+                runningBalance = Math.Round(runningBalance, 2);
+                numTransactionsSorted++;
+            }
+
+            if (numTransactionsSorted < accountTransactions.Count())
+                throw new Exception("Some transations not sorting - aborting.");
+        }
+
+        return sortedTransactions.OrderBy(t => t.Date).ThenBy(t => t.Account);  
+    }
+
+    /// <summary>
+    /// Find a starting balance
+    /// </summary>
+    /// <param name="accountTransactions">Account transactions.</param>
+    /// <returns>The starting balance.</returns>
+    private static double FindStartingBalance(IEnumerable<Transaction> accountTransactions)
+    {
+        // Find the lowest date.
+        var lowestDate = accountTransactions.Min(t => t.Date);
+
+        var transactionsForFirstDate = accountTransactions.Where(t => t.Date == lowestDate);
+        foreach (var transaction in transactionsForFirstDate)
+        {
+            double previousBalance = transaction.Balance - transaction.Amount;
+            
+            // If the previousBalance doesn't match a balance for transaction for this date then
+            // that will be the starting date.
+            var matchedTransactions = transactionsForFirstDate.Where(t => t.Balance == previousBalance);
+            if (!matchedTransactions.Any())
+                return previousBalance;
+        }
+        throw new Exception("Cannot find a first transaction to start running balance");        
+    }
 
     /// <summary>
     /// Use ML to predict categories for bank transactions.

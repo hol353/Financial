@@ -3,7 +3,7 @@ namespace Finance;
 /// <summary>
 /// Encapsulates a single bank transaction, with equality functionality.
 /// </summary>
-public class Transaction : IEquatable<Transaction>
+public class Transaction //: IEquatable<Transaction>
 {
     /// <summary>The account number.</summary>
     public string Account { get; set; } = string.Empty;
@@ -23,29 +23,24 @@ public class Transaction : IEquatable<Transaction>
     /// <summary>The category of the transaction.</summary>
     public string Category { get; set; } = string.Empty;    
 
-    /// <summary>
-    /// Tests equality between this transaction and another.
-    /// </summary>
-    /// <param name="other">The other transaction.</param>
-    /// <param name="useDate">Use date to do match?</param>
-    /// <returns>True if equal</returns>
-    public bool Equals(Transaction? other)
-    {
-        return Equals(other, useDate: true);
-    }
+    /// <summary>The details of the transaction.</summary>
+    public string Details { get; set; } = string.Empty;  
+
+    /// <summary>The details of the transaction.</summary>
+    public string InvoiceReceipt { get; set; } = string.Empty;      
 
     /// <summary>
     /// Tests equality between this transaction and another.
     /// </summary>
     /// <param name="other">The other transaction.</param>
-    /// <param name="useDate">Use date to do match?</param>
+    /// <param name="exactDate">Dates must match exactly?</param>
     /// <returns>True if equal</returns>
-    public bool Equals(Transaction? other, bool useDate)
+    public bool CloseMatch(Transaction? other)
     {
         if (other == null)
             throw new Exception("other is null");
         if (Account == other.Account && Amount == other.Amount && 
-            (!useDate || Date == other.Date))
+            (other.Date - Date).Days < 10)
         {
             string[] tokens = Reference.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             string[] otherTokens = other.Reference.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -55,18 +50,4 @@ public class Transaction : IEquatable<Transaction>
         }
         return false;
     }
-
-    /// <summary>
-    /// Tests equality between this transaction and another.
-    /// </summary>
-    /// <param name="other">The other transaction.</param>
-    /// <returns>True if equal</returns>
-    public override bool Equals(object? obj) => Equals(obj as Transaction);
-
-    /// <summary>
-    /// Calculates a hash code for this transaction.
-    /// </summary>
-    /// <param name="other">The other transaction.</param>
-    /// <returns>True if equal</returns>    
-    public override int GetHashCode() => (Account, Date, Amount).GetHashCode();
-}
+ }
