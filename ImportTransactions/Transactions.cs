@@ -125,9 +125,10 @@ public class Transactions
         var lowestDate = accountTransactions.Min(t => t.Date);
 
         var transactionsForFirstDate = accountTransactions.Where(t => t.Date == lowestDate);
+        double previousBalance = 0;
         foreach (var transaction in transactionsForFirstDate)
         {
-            double previousBalance = transaction.Balance - transaction.Amount;
+            previousBalance = transaction.Balance - transaction.Amount;
             
             // If the previousBalance doesn't match a balance for transaction for this date then
             // that will be the starting date.
@@ -135,6 +136,9 @@ public class Transactions
             if (!matchedTransactions.Any())
                 return previousBalance;
         }
+        if (transactionsForFirstDate.Count() == 1)
+            return previousBalance;
+
         throw new Exception("Cannot find a first transaction to start running balance");        
     }
 

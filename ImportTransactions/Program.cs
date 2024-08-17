@@ -39,7 +39,7 @@ class Program
                     foreach (var fileName in Directory.GetFiles(directory, Path.GetFileName(options.ImportPatterns)))
                     {
                         Console.WriteLine($"Importing transactions from {fileName}");
-                        var transactionsToImport = BankTransactionFile.Read(options.ImportPatterns);
+                        var transactionsToImport = BankTransactionFile.Read(fileName);
                         if (transactionsToImport != null)
                             transactions = Transactions.Merge(transactions, transactionsToImport);
                     }
