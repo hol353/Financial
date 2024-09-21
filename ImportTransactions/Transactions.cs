@@ -96,7 +96,7 @@ public class Transactions
             // Find the first transaction that matches the running balance.
             int numTransactionsSorted = 0;
             Transaction? match;
-            while ((match = accountTransactions.Find(t => Math.Round(t.Balance - t.Amount, 2) == runningBalance)) != null)
+            while ((match = accountTransactions.Find(t => Math.Round(t.Balance - t.Amount, 2) == Math.Round(runningBalance, 2))) != null)
             {
                 // Move transaction to sortedTransactions.
                 sortedTransactions.Add(match);
