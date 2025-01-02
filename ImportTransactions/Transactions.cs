@@ -40,7 +40,10 @@ public class Transactions
         }
 
         if (firstValidNewTransaction == null)
-            throw new Exception("Cannot import new transactions. There needs to be more overlap of existing and new transactions");
+        {
+            Console.WriteLine($"!!!! No new transactions found in account {newTransactions.First().Account}");
+            return existing1;
+        }
 
         // Skip new transactions before our first valid transaction.
         newTransactions = newTransactions.SkipWhile(t => t != firstValidNewTransaction);
@@ -50,7 +53,9 @@ public class Transactions
         DateTime lastDate = newTransactions.Max(t => t.Date);
 
         // Find existing transactions in the date range.
-        var existingToRemove = existingForAccount.Where(t => t.Date >= firstDate && t.Date <= lastDate);
+        var splitTransactions = existingForAccount.Where(t => t.Split != string.Empty);
+        var nonSplitTransactions = existingForAccount.Except(splitTransactions).ToList();
+        var existingToRemove = nonSplitTransactions.Where(t => t.Date >= firstDate && t.Date <= lastDate);
 
         // Try and give each new transaction a category from the matching existing transaction.
         foreach (var importedTransaction in newTransactions)
@@ -69,7 +74,8 @@ public class Transactions
         }
 
         // Return a sorted merged list.
-        var existingToKeep = existingForAccount.Except(existingToRemove);
+        var existingToKeep = nonSplitTransactions.Except(existingToRemove)
+                                                 .Concat(splitTransactions);
         return Sort(existingToKeep.Concat(newTransactions)
                                   .Concat(existingOtherAccounts));
     }
@@ -82,16 +88,20 @@ public class Transactions
     public static IEnumerable<Transaction> Sort(IEnumerable<Transaction> transactions)
     {
         List<Transaction> sortedTransactions = new();
-        
-        foreach (var account in transactions.Select(t => t.Account)
-                                            .Distinct()
-                                            .Order())
-        {
-            var accountTransactions = transactions.Where(t => t.Account == account)
-                                                  .OrderBy(t => t.Date)
-                                                  .ToList();
 
-            double runningBalance = FindStartingBalance(accountTransactions);
+        var splitTransactions = transactions.Where(t => t.Split != string.Empty);
+        var nonSplitTransactions = transactions.Except(splitTransactions).ToList();
+
+        foreach (var account in nonSplitTransactions.Select(t => t.Account)
+                                                    .Distinct()
+                                                    .Order())
+        {
+            var accountTransactions = nonSplitTransactions.Where(t => t.Account == account)
+                                                          .OrderBy(t => t.Date)
+                                                          .ToList();
+
+            var firstTransaction = FindStartingTransaction(accountTransactions);
+            var runningBalance = firstTransaction.Balance - firstTransaction.Amount;
             
             // Find the first transaction that matches the running balance.
             int numTransactionsSorted = 0;
@@ -107,11 +117,12 @@ public class Transactions
                 numTransactionsSorted++;
             }
 
-            if (numTransactionsSorted < accountTransactions.Count())
+            if (accountTransactions.Where(t => t.Amount != 0).Count() > 0)
                 throw new Exception("Some transations not sorting - aborting.");
         }
 
-        return sortedTransactions.OrderBy(t => t.Date).ThenBy(t => t.Account);  
+        return sortedTransactions.Concat(splitTransactions)
+                                 .OrderBy(t => t.Date).ThenBy(t => t.Account);  
     }
 
     /// <summary>
@@ -119,7 +130,7 @@ public class Transactions
     /// </summary>
     /// <param name="accountTransactions">Account transactions.</param>
     /// <returns>The starting balance.</returns>
-    private static double FindStartingBalance(IEnumerable<Transaction> accountTransactions)
+    private static Transaction FindStartingTransaction(IEnumerable<Transaction> accountTransactions)
     {
         // Find the lowest date.
         var lowestDate = accountTransactions.Min(t => t.Date);
@@ -132,12 +143,12 @@ public class Transactions
             
             // If the previousBalance doesn't match a balance for transaction for this date then
             // that will be the starting date.
-            var matchedTransactions = transactionsForFirstDate.Where(t => t.Balance == previousBalance);
+            var matchedTransactions = transactionsForFirstDate.Where(t => t.Balance == Math.Round(previousBalance, 2));
             if (!matchedTransactions.Any())
-                return previousBalance;
+                return transaction;
         }
         if (transactionsForFirstDate.Count() == 1)
-            return previousBalance;
+            return transactionsForFirstDate.First();
 
         throw new Exception("Cannot find a first transaction to start running balance");        
     }

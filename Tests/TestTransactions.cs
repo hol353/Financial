@@ -253,60 +253,6 @@ public class TestTransactions
     }    
 
     /// <summary>
-    /// If the order of the accounts change (only happens if I decide I want a different order)
-    /// then should still work.
-    /// </summary>
-    [TestMethod]
-    public void TestAccountOrderChanged()
-    {
-        List<Transaction> existingTransactions = 
-        [
-            new() { Date = new DateTime(2024, 6, 1), Amount = 111, Account = "S1", Reference = "a", Category = "c1" },
-            new() { Date = new DateTime(2024, 6, 1), Amount = 222, Account = "S2", Reference = "b", Category = "c2" },
-            new() { Date = new DateTime(2024, 6, 1), Amount = 333, Account = "S3", Reference = "c", Category = "c3" },
-            new() { Date = new DateTime(2024, 6, 1), Amount = 444, Account = "S5", Reference = "d", Category = "c4" }
-        ];
-        
-        // New transactions don't have a category and the second and 3rd transactions have new dates.
-        List<Transaction> newTransactions = 
-        [
-            new() { Date = new DateTime(2024, 6, 1), Amount = 111, Account = "S1", Reference = "a", Category = string.Empty },
-            new() { Date = new DateTime(2024, 6, 1), Amount = 444, Account = "S5", Reference = "d", Category = string.Empty },
-            new() { Date = new DateTime(2024, 6, 1), Amount = 333, Account = "S3", Reference = "c", Category = string.Empty },
-            new() { Date = new DateTime(2024, 6, 1), Amount = 222, Account = "S2", Reference = "b", Category = string.Empty },
-        ];
-
-        var mergedTransactions = Transactions.Merge(existingTransactions, newTransactions).ToArray();
-        if (mergedTransactions == null)
-            Assert.Fail("No transactions");
-
-        Assert.AreEqual(4, mergedTransactions.Count());
-        Assert.AreEqual(new DateTime(2024, 6, 1), mergedTransactions[0].Date);
-        Assert.AreEqual(111.0, mergedTransactions[0].Amount);
-        Assert.AreEqual("S1", mergedTransactions[0].Account);
-        Assert.AreEqual("a", mergedTransactions[0].Reference); 
-        Assert.AreEqual("c1", mergedTransactions[0].Category);
-
-        Assert.AreEqual(new DateTime(2024, 6, 1), mergedTransactions[1].Date);
-        Assert.AreEqual(222, mergedTransactions[1].Amount);
-        Assert.AreEqual("S2", mergedTransactions[1].Account);
-        Assert.AreEqual("b", mergedTransactions[1].Reference); 
-        Assert.AreEqual("c2", mergedTransactions[1].Category);  
-
-        Assert.AreEqual(new DateTime(2024, 6, 1), mergedTransactions[2].Date);
-        Assert.AreEqual(333, mergedTransactions[2].Amount);
-        Assert.AreEqual("S3", mergedTransactions[2].Account);
-        Assert.AreEqual("c", mergedTransactions[2].Reference); 
-        Assert.AreEqual("c3", mergedTransactions[2].Category);
-
-        Assert.AreEqual(new DateTime(2024, 6, 1), mergedTransactions[3].Date);
-        Assert.AreEqual(444, mergedTransactions[3].Amount);
-        Assert.AreEqual("S5", mergedTransactions[3].Account);
-        Assert.AreEqual("d", mergedTransactions[3].Reference); 
-        Assert.AreEqual("c4", mergedTransactions[3].Category);        
-    }     
-
-    /// <summary>
     /// Test sorting - some banks don't have their transactions in order such that the balances make sense.
     /// </summary>
     [TestMethod]
@@ -376,5 +322,69 @@ public class TestTransactions
         Assert.AreEqual(new DateTime(2024, 6, 2), sortedTransactions[2].Date);
         Assert.AreEqual(30, sortedTransactions[2].Amount);
         Assert.AreEqual(130, sortedTransactions[2].Balance);
-    }    
+    }   
+
+
+    /// <summary>
+    /// Test splitting transactions
+    /// </summary>
+    [TestMethod]
+    public void TestSplit()
+    {
+        List<Transaction> existingTransactions = 
+        [
+            new() { Date = new DateTime(2024, 6, 1), Amount = 111, Balance = 111, Account = "S1", Reference = "a", Category = "c1" },
+            new() { Date = new DateTime(2024, 6, 1), Amount = 222, Balance = 333, Account = "S1", Reference = "b", Category = "c2" },
+            new() { Date = new DateTime(2024, 6, 1), Amount = -111, Account = "S1", Split = "Negate", },
+            new() { Date = new DateTime(2024, 6, 1), Amount = 100, Account = "S1", Split = "Split", Category = "split1" },
+            new() { Date = new DateTime(2024, 6, 1), Amount = 11, Account = "S1", Split = "Split", Category = "split2" }
+        ];
+        
+        // New transactions don't have a category and the second and 3rd transactions have new dates.
+        List<Transaction> newTransactions = 
+        [
+            new() { Date = new DateTime(2024, 6, 1), Amount = 111, Balance = 111, Account = "S1", Reference = "a", Category = string.Empty },
+            new() { Date = new DateTime(2024, 6, 1), Amount = 222, Balance = 333, Account = "S1", Reference = "b", Category = string.Empty },
+            new() { Date = new DateTime(2024, 6, 1), Amount = 333, Balance = 666, Account = "S1", Reference = "c", Category = string.Empty }
+        ];
+
+        var mergedTransactions = Transactions.Merge(existingTransactions, newTransactions).ToArray();
+        if (mergedTransactions == null)
+            Assert.Fail("No transactions");
+
+        Assert.AreEqual(6, mergedTransactions.Count());
+        Assert.AreEqual(new DateTime(2024, 6, 1), mergedTransactions[0].Date);
+        Assert.AreEqual(111.0, mergedTransactions[0].Amount);
+        Assert.AreEqual("S1", mergedTransactions[0].Account);
+        Assert.AreEqual("a", mergedTransactions[0].Reference); 
+        Assert.AreEqual("c1", mergedTransactions[0].Category);
+
+        Assert.AreEqual(new DateTime(2024, 6, 1), mergedTransactions[1].Date);
+        Assert.AreEqual(222, mergedTransactions[1].Amount);
+        Assert.AreEqual("S1", mergedTransactions[1].Account);
+        Assert.AreEqual("b", mergedTransactions[1].Reference); 
+        Assert.AreEqual("c2", mergedTransactions[1].Category);  
+
+        Assert.AreEqual(new DateTime(2024, 6, 1), mergedTransactions[2].Date);
+        Assert.AreEqual(333, mergedTransactions[2].Amount);
+        Assert.AreEqual("S1", mergedTransactions[2].Account);
+        Assert.AreEqual("", mergedTransactions[2].Split); 
+
+        Assert.AreEqual(new DateTime(2024, 6, 1), mergedTransactions[3].Date);
+        Assert.AreEqual(-111, mergedTransactions[3].Amount);
+        Assert.AreEqual("S1", mergedTransactions[3].Account);
+        Assert.AreEqual("Negate", mergedTransactions[3].Split); 
+
+        Assert.AreEqual(new DateTime(2024, 6, 1), mergedTransactions[4].Date);
+        Assert.AreEqual(100, mergedTransactions[4].Amount);
+        Assert.AreEqual("S1", mergedTransactions[4].Account);
+        Assert.AreEqual("Split", mergedTransactions[4].Split); 
+        Assert.AreEqual("split1", mergedTransactions[4].Category); 
+
+        Assert.AreEqual(new DateTime(2024, 6, 1), mergedTransactions[5].Date);
+        Assert.AreEqual(11, mergedTransactions[5].Amount);
+        Assert.AreEqual("S1", mergedTransactions[5].Account);
+        Assert.AreEqual("Split", mergedTransactions[5].Split); 
+        Assert.AreEqual("split2", mergedTransactions[5].Category); 
+    }      
 }

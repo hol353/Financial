@@ -14,6 +14,9 @@ public class Transaction //: IEquatable<Transaction>
     /// <summary>The amount of the transaction.</summary>
     public double Amount { get; set; }
 
+    /// <summary>String to denote when a split has occurred.</summary>
+    public string Split { get; set; } = string.Empty; 
+
     /// <summary>The reference (description) of the transaction.</summary>
     public string Reference { get; set; } = string.Empty;
 
