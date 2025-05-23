@@ -147,7 +147,7 @@ public class Transactions
             if (!matchedTransactions.Any())
                 return transaction;
         }
-        if (transactionsForFirstDate.Count() == 1)
+        if (transactionsForFirstDate.Any())
             return transactionsForFirstDate.First();
 
         throw new Exception("Cannot find a first transaction to start running balance");        
