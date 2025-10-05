@@ -37,6 +37,11 @@ public class Excel
                 T dataRow = new();
                 int columnIndex = 1;
 
+                // For some reason workSheet.Rows can return blanks (when using LibreOffice Calc?).
+                // When this happens, assume no more rows.
+                if (row.Cell(1).GetValue<string>() == string.Empty)
+                    break;
+
                 foreach (var property in properties)
                 {
                     IXLCell cell = row.Cell(columnIndex);
