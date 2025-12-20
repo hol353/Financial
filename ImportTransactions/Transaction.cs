@@ -1,9 +1,11 @@
+using ClosedXML.Attributes;
+
 namespace Finance;
 
 /// <summary>
 /// Encapsulates a single bank transaction, with equality functionality.
 /// </summary>
-public class Transaction //: IEquatable<Transaction>
+public class Transaction : IEquatable<Transaction>
 {
     /// <summary>The account number.</summary>
     public string Account { get; set; } = string.Empty;
@@ -22,6 +24,10 @@ public class Transaction //: IEquatable<Transaction>
 
     /// <summary>The balance of the account.</summary>
     public double Balance { get; set; }
+
+    /// <summary>The balance of the previous transaction.</summary>
+    [property: XLColumn(Ignore = true)]
+    public double PreviousBalance => Math.Round(Balance - Amount, 2);
 
     /// <summary>The category of the transaction.</summary>
     public string Category { get; set; } = string.Empty;    
@@ -53,4 +59,14 @@ public class Transaction //: IEquatable<Transaction>
         }
         return false;
     }
- }
+
+    public override int GetHashCode()
+    {
+        return (Date, Account, Reference, Balance).GetHashCode();
+    }
+
+    public bool Equals(Transaction? other)
+    {
+        return GetHashCode() == other?.GetHashCode();
+    }
+}

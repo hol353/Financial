@@ -296,6 +296,115 @@ public class TestTransactions
     }
 
     /// <summary>
+    /// Test sorting - some banks don't have their transactions in order such that the balances make sense.
+    /// </summary>
+    [TestMethod]
+    public void TestSort2()
+    {
+        List<Transaction> transactions = 
+        [
+            new() { Date = new DateTime(2025, 9, 10), Amount = 112.5, Balance = 35791.79, Account = "S1", Reference = "b" },
+            new() { Date = new DateTime(2025, 9, 10), Amount = 112.5, Balance = 35904.29, Account = "S1", Reference = "c" },
+            new() { Date = new DateTime(2025, 9, 10), Amount = 935, Balance = 35679.29, Account = "S1", Reference = "a" },
+            new() { Date = new DateTime(2025, 9, 22), Amount = 150, Balance = 36211.79, Account = "S1", Reference = "d" },
+            new() { Date = new DateTime(2025, 9, 22), Amount = 157.5, Balance = 36061.79, Account = "S1", Reference = "e" },
+            new() { Date = new DateTime(2025, 9, 22), Amount = -125, Balance = 36086.79, Account = "S1", Reference = "f" },
+        ];
+
+        var sortedTransactions = Transactions.Sort(transactions).ToArray();
+
+        Assert.AreEqual(new DateTime(2025, 9, 10), sortedTransactions[0].Date);
+        Assert.AreEqual(935, sortedTransactions[0].Amount);
+        Assert.AreEqual(35679.29, sortedTransactions[0].Balance);
+
+        Assert.AreEqual(new DateTime(2025, 9, 10), sortedTransactions[1].Date);
+        Assert.AreEqual(112.5, sortedTransactions[1].Amount);
+        Assert.AreEqual(35791.79, sortedTransactions[1].Balance);
+
+        Assert.AreEqual(new DateTime(2025, 9, 10), sortedTransactions[2].Date);
+        Assert.AreEqual(112.5, sortedTransactions[2].Amount);
+        Assert.AreEqual(35904.29, sortedTransactions[2].Balance);
+
+        Assert.AreEqual(new DateTime(2025, 9, 22), sortedTransactions[3].Date);
+        Assert.AreEqual(157.5, sortedTransactions[3].Amount);
+        Assert.AreEqual(36061.79, sortedTransactions[3].Balance);
+
+        Assert.AreEqual(new DateTime(2025, 9, 22), sortedTransactions[4].Date);
+        Assert.AreEqual(150, sortedTransactions[4].Amount);
+        Assert.AreEqual(36211.79, sortedTransactions[4].Balance);
+
+        Assert.AreEqual(new DateTime(2025, 9, 22), sortedTransactions[5].Date);
+        Assert.AreEqual(-125, sortedTransactions[5].Amount);
+        Assert.AreEqual(36086.79, sortedTransactions[5].Balance);
+    }
+
+    /// <summary>
+    /// Test sorting where the initial transactions are already in order but there are 2 possible solutions.
+    /// </summary>
+    [TestMethod]
+    public void TestSortWith2SolutionsButInitiallyInOrder()
+    {
+        List<Transaction> transactions = 
+        [
+            new() { Date = new DateTime(2025, 11, 26), Amount = 157.5, Balance = 28341.16, Account = "S1", Reference = "a" },
+            new() { Date = new DateTime(2025, 11, 28), Amount = 180, Balance = 28521.16, Account = "S1", Reference = "c" },
+            new() { Date = new DateTime(2025, 11, 28), Amount = -180, Balance = 28341.16, Account = "S1", Reference = "a" },
+            new() { Date = new DateTime(2025, 11, 28), Amount = -210, Balance = 28131.16, Account = "S1", Reference = "d" },
+        ];
+
+        var sortedTransactions = Transactions.Sort(transactions).ToArray();
+
+        Assert.AreEqual(new DateTime(2025, 11, 26), sortedTransactions[0].Date);
+        Assert.AreEqual(157.5, sortedTransactions[0].Amount);
+        Assert.AreEqual(28341.16, sortedTransactions[0].Balance);
+
+        Assert.AreEqual(new DateTime(2025, 11, 28), sortedTransactions[1].Date);
+        Assert.AreEqual(180, sortedTransactions[1].Amount);
+        Assert.AreEqual(28521.16, sortedTransactions[1].Balance);
+
+        Assert.AreEqual(new DateTime(2025, 11, 28), sortedTransactions[2].Date);
+        Assert.AreEqual(-180, sortedTransactions[2].Amount);
+        Assert.AreEqual(28341.16, sortedTransactions[2].Balance);
+
+        Assert.AreEqual(new DateTime(2025, 11, 28), sortedTransactions[3].Date);
+        Assert.AreEqual(-210, sortedTransactions[3].Amount);
+        Assert.AreEqual(28131.16, sortedTransactions[3].Balance);
+    }  
+
+    /// <summary>
+    /// Test sorting where the initial transactions are NOT in order but there are 2 possible solutions.
+    /// </summary>
+    [TestMethod]
+    public void TestSortWith2SolutionsButNOTInitiallyInOrder()
+    {
+        List<Transaction> transactions = 
+        [
+            new() { Date = new DateTime(2025, 11, 26), Amount = 157.5, Balance = 28341.16, Account = "S1", Reference = "a" },
+            new() { Date = new DateTime(2025, 11, 28), Amount = -210, Balance = 28131.16, Account = "S1", Reference = "d" },
+            new() { Date = new DateTime(2025, 11, 28), Amount = -180, Balance = 28341.16, Account = "S1", Reference = "a" },
+            new() { Date = new DateTime(2025, 11, 28), Amount = 180, Balance = 28521.16, Account = "S1", Reference = "c" },
+        ];
+
+        var sortedTransactions = Transactions.Sort(transactions).ToArray();
+
+        Assert.AreEqual(new DateTime(2025, 11, 26), sortedTransactions[0].Date);
+        Assert.AreEqual(157.5, sortedTransactions[0].Amount);
+        Assert.AreEqual(28341.16, sortedTransactions[0].Balance);
+
+        Assert.AreEqual(new DateTime(2025, 11, 28), sortedTransactions[1].Date);
+        Assert.AreEqual(180, sortedTransactions[1].Amount);
+        Assert.AreEqual(28521.16, sortedTransactions[1].Balance);
+
+        Assert.AreEqual(new DateTime(2025, 11, 28), sortedTransactions[2].Date);
+        Assert.AreEqual(-180, sortedTransactions[2].Amount);
+        Assert.AreEqual(28341.16, sortedTransactions[2].Balance);
+
+        Assert.AreEqual(new DateTime(2025, 11, 28), sortedTransactions[3].Date);
+        Assert.AreEqual(-210, sortedTransactions[3].Amount);
+        Assert.AreEqual(28131.16, sortedTransactions[3].Balance);
+    }     
+
+    /// <summary>
     /// Test sorting - some banks have zero amount transactions e.g for interest rate changes.
     /// Make sure sorting works with these.
     /// </summary>

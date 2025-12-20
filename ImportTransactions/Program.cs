@@ -48,9 +48,6 @@ class Program
                 // Predict missing categories.
                 Transactions.PredictCategories(transactions);
 
-                // Sort the transactions.
-                transactions = Transactions.Sort(transactions);
-
                 // Write spreadsheet.
                 Console.WriteLine($"Write to {options.Cashbook}");
                 Excel.Write(options.Cashbook, "Transactions", transactions);

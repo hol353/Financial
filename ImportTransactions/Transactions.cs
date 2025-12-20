@@ -1,8 +1,7 @@
-﻿using DocumentFormat.OpenXml.Drawing.Diagrams;
+﻿
 using Microsoft.ML;
 using Microsoft.ML.Data;
-using MoreLinq;
-using Tensorflow;
+using MoreLinq.Extensions;
 
 namespace Finance;
 
@@ -76,9 +75,47 @@ public class Transactions
         // Return a sorted merged list.
         var existingToKeep = nonSplitTransactions.Except(existingToRemove)
                                                  .Concat(splitTransactions);
-        return Sort(existingToKeep.Concat(newTransactions)
-                                  .Concat(existingOtherAccounts));
+        return Sort2(existingToKeep.Concat(newTransactions)
+                                   .Concat(existingOtherAccounts));
     }
+
+    /// <summary>
+    /// Sort transactions so that they are in order and their balances are correct.
+    /// Some banks transactions are out-of-order for a given day.
+    /// </summary>
+    /// <param name="transactions">The transactions to sort.</param>
+    public static IEnumerable<Transaction> Sort2(IEnumerable<Transaction> transactions)
+    {
+        List<Transaction> sortedTransactions = new();
+
+        var splitTransactions = transactions.Where(t => t.Split != string.Empty);
+        var nonSplitTransactions = transactions.Except(splitTransactions).ToList();
+
+        List<Transaction> unmatchedTransactions = new();
+        foreach (var account in nonSplitTransactions.Select(t => t.Account)
+                                                    .Distinct()
+                                                    .Order())
+        {
+            var accountTransactions = nonSplitTransactions.Where(t => t.Account == account)
+                                                          .OrderBy(t => t.Date)
+                                                          .ToList();
+            List<Transaction> accountTransactionsSorted = new();
+            foreach (var transaction in accountTransactions)
+            {
+                var previousTransaction = accountTransactions.Find(t => t.Balance == transaction.PreviousBalance);
+
+                int index = previousTransaction == null ? -1 : accountTransactionsSorted.FindIndex(t => t.Equals(previousTransaction));
+
+                if (previousTransaction == null || index == -1)
+                    accountTransactionsSorted.Add(transaction);
+                else
+                    accountTransactionsSorted.Insert(index + 1, transaction);
+            }
+            sortedTransactions.AddRange(accountTransactionsSorted);
+        }
+        return sortedTransactions.Concat(splitTransactions)
+                                 .OrderBy(t => t.Date).ThenBy(t => t.Account);  
+    }    
 
     /// <summary>
     /// Sort transactions so that they are in order and their balances are correct.
@@ -100,30 +137,114 @@ public class Transactions
                                                           .OrderBy(t => t.Date)
                                                           .ToList();
 
-            var firstTransaction = FindStartingTransaction(accountTransactions);
-            var runningBalance = firstTransaction.Balance - firstTransaction.Amount;
-            
-            // Find the first transaction that matches the running balance.
-            int numTransactionsSorted = 0;
-            Transaction? match;
-            while ((match = accountTransactions.Find(t => Math.Round(t.Balance - t.Amount, 2) == Math.Round(runningBalance, 2))) != null)
+            //var firstTransaction = FindStartingTransaction(accountTransactions);
+            var runningBalance = double.MinValue; //firstTransaction.Balance - firstTransaction.Amount;
+            var transactionDates = accountTransactions.Select(t => t.Date).Distinct().ToArray();            
+
+            foreach (var date in transactionDates)
             {
-                // Move transaction to sortedTransactions.
-                sortedTransactions.Add(match);
-                accountTransactions.Remove(match);
+                if (date == new DateTime(2025, 11, 28))
+                {
+                    
+                }
+                List<Transaction> transactionsForDate = accountTransactions.FindAll(t => t.Date == date);
 
-                runningBalance += match.Amount;
+                // Put transactions for this date into a consistent, sorted state.
+                int iteration = 0;
+                while (!IsSorted(transactionsForDate))
+                {
+                    for (int i = 0; i != transactionsForDate.Count; i++)
+                    {
+                        var transaction = transactionsForDate[i];
+                        int toIndex;
+                        var previousTransaction = transactionsForDate.Find(t => t.Balance == transaction.PreviousBalance);
+                        if (previousTransaction == null || transaction.PreviousBalance == runningBalance)
+                        {
+                            // Must be first item.
+                            toIndex = 0;
+                        }
+                        else
+                        {
+                            toIndex = transactionsForDate.FindIndex(t => t.Equals(previousTransaction));
+                            if (toIndex == -1)
+                                throw new Exception($"Cannot find previous transaction index. Aborting...");
+                            toIndex++;
+                        }
+
+                        int currentIndex =  transactionsForDate.FindIndex(t => t.Equals(transaction));
+
+                        // Move the transaction if necessary
+                        if (toIndex != currentIndex)
+                            transactionsForDate = transactionsForDate.Move(currentIndex, 1, toIndex).ToList();
+                    }
+
+                iteration++;
+                if (iteration > transactionsForDate.Count())
+                    throw new Exception($"Cannot sort transactions for account {account}");
+
+                }
+
+                // Make sure the first transaction balance matches the previous last transaction in sortedTransactions
+                if (sortedTransactions.Count > 0 && transactionsForDate.First().PreviousBalance != sortedTransactions.Last().Balance)
+                    throw new Exception($"Discontinuity found while sorting. There is a mistach in balances between {sortedTransactions.Last().Date} and {transactionsForDate.First().Date}");
+
+                // Order the transactions for this date so that the balances for each transaction work.
+                sortedTransactions.AddRange(transactionsForDate);
+                runningBalance = sortedTransactions.Last().Balance;
                 runningBalance = Math.Round(runningBalance, 2);
-                numTransactionsSorted++;
             }
-
-            if (accountTransactions.Where(t => t.Amount != 0).Count() > 0)
-                throw new Exception("Some transations not sorting - aborting.");
         }
 
         return sortedTransactions.Concat(splitTransactions)
                                  .OrderBy(t => t.Date).ThenBy(t => t.Account);  
     }
+
+    private static bool IsSorted(IList<Transaction> transactions)
+    {
+        for (int i = 1; i < transactions.Count; i++)
+        {
+            if (transactions[i].PreviousBalance != transactions[i-1].Balance)
+                return false;
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Order the transactions for this date so that the balances for each transaction work.
+    /// </summary>
+    /// <param name="transactions"></param>
+    /// <param name="runningBalance"></param>
+    /// <returns></returns>
+    private static IEnumerable<Transaction> SortTransactions(IEnumerable<Transaction> transactions, double runningBalance)
+    {
+        foreach (var transaction in transactions)
+        {
+            if (Math.Round(transaction.Balance - transaction.Amount, 2) == Math.Round(runningBalance, 2))
+            {
+                var otherTransactions = transactions.Where(t => t != transaction);
+                if (!otherTransactions.Any())
+                    return [ transaction ];
+                else
+                {
+                    var otherTransactionsSorted = SortTransactions(otherTransactions, runningBalance + transaction.Amount);
+                    if (otherTransactionsSorted != null)
+                        return new Transaction[] { transaction }.Concat(otherTransactions);
+                }
+            }
+        }
+        throw new Exception($"Cannot sort transactions for date {transactions.First().Date}");
+    }
+
+    /// <summary>
+    /// Shift an array to the left.
+    /// </summary>
+    /// <param name="transactions"></param>
+    /// <param name="numToShift"></param>
+    /// <returns></returns>
+    public static IEnumerable<Transaction> ShiftLeft(IEnumerable<Transaction> transactions, int numToShift) 
+    {
+        return transactions.Skip(numToShift).Concat(transactions.Take(numToShift));
+    }    
 
     /// <summary>
     /// Find a starting balance
