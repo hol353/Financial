@@ -22,6 +22,9 @@ class Program
     /// <param name="args">Command line arguments.</param>
     static void Main(string[] args)
     {
+        Directory.SetCurrentDirectory("/home/hol353/Repos/Financial/Data");
+        args = [ "--cashbook=CashBook.xlsx",
+                 "--pattern=*.csv"];
         try
         {
             Parser.Default.ParseArguments<Options>(args)

@@ -1,3 +1,4 @@
+using System.Globalization;
 using GenericParsing;
 
 namespace Finance;
@@ -33,7 +34,12 @@ public class Csv
                     if (property.PropertyType == typeof(double))
                         property.SetValue(dataRow, Convert.ToDouble(parser[columnIndex]));
                     else if (property.PropertyType == typeof(DateTime))
-                        property.SetValue(dataRow, DateTime.Parse(parser[columnIndex]));
+                    {
+                        if (DateTime.TryParse(parser[columnIndex], out DateTime d))
+                            property.SetValue(dataRow, d);
+                        else
+                            property.SetValue(dataRow, DateTime.ParseExact(parser[columnIndex], "dd/MM/yyyy", CultureInfo.InvariantCulture));
+                    }
                     else
                         property.SetValue(dataRow, parser[columnIndex]);
                 }

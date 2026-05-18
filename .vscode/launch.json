@@ -8,7 +8,7 @@
             "name": ".NET Core Launch (console)",
             "type": "coreclr",
             "request": "launch",
-            "program": "${workspaceRoot}/ImportTransactions/bin/Debug/net8.0/ImportTransactions.dll",
+            "program": "${workspaceRoot}/ImportTransactions/bin/Debug/net10.0/ImportTransactions.dll",
             "args": [
                         "--cashbook=CashBook.xlsx",
                         "--pattern=*.csv"
