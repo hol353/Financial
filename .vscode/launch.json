@@ -16,7 +16,7 @@
             "cwd": "${workspaceRoot}/Data",
             "stopAtEntry": false,
 
-            "externalConsole": true
+            
         }
     ]
 }
