@@ -8,31 +8,6 @@ namespace Finance;
 public class BankTransactionFile
 {
     /// <summary>
-    /// Merge transactions.
-    /// </summary>
-    /// <param name="fileNames"></param>
-    public static IEnumerable<Transaction> Read(IEnumerable<string> fileNames)
-    {
-        // Some fileNames may be patterns (filespecs). If so expand them to filenames
-        List<string> expandedFileNames = [];
-        foreach (string f in fileNames)
-        {
-            var dir = Path.GetDirectoryName(f);
-            if (dir != null)
-                expandedFileNames.AddRange(Directory.GetFiles(dir, Path.GetFileName(f)));
-        }
-
-        IEnumerable<Transaction> transactionsToImport = [];
-        foreach (var fileName in expandedFileNames)
-        {
-            var transactions = Read(fileName);
-            if (transactions != null)
-                transactionsToImport = transactionsToImport.Concat(transactions);
-        }
-        return transactionsToImport.OrderBy(transation => transation.Date);
-    }
-
-    /// <summary>
     /// Read transactions from a bank file.
     /// </summary>
     /// <param name="fileName">The file name to read.</param>

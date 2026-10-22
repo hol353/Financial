@@ -10,21 +10,35 @@ namespace Finance;
 /// </summary>
 public class Transactions
 {
-   /// <summary>
+    private IEnumerable<Transaction> transactions;
+
+    /// <summary>
+    /// Create a new instance of the Transactions class.
+    /// </summary>
+    /// <param name="transactions"></param>
+    public Transactions(IEnumerable<Transaction> transactions)
+    {
+        this.transactions = Sort(transactions).ToArray();
+    }
+
+    /// <summary>
+    /// Get all transactions.
+    /// </summary>
+    public IEnumerable<Transaction> All => transactions;
+
+    /// <summary>
     /// Import a set of transactions into the current set of transactions for an account.
     /// </summary>
-    /// <param name="newTransactions">Transactions to import.</param>
     /// <param name="account">Account name.</param>
-    public static IEnumerable<Transaction> Merge(IEnumerable<Transaction> transactions, IEnumerable<Transaction> newTransactions)
+    public void Import(IEnumerable<Transaction> newTransactions)
     {
         var account = newTransactions.First().Account;
-        var transactionsForAccount = transactions.Where(t => t.Account == account);
+        var accountTransactions = TransactionsWithoutSplits(account);
 
-        // Assume the transactions are in date order.
         // Remove transactions starting from the first date in 'newTransactions'
         var dateOfFirstNewTransaction = newTransactions.First().Date;
-        var transactionsToKeep = transactionsForAccount.Where(t => t.Date < dateOfFirstNewTransaction || t.Split != string.Empty);
-        var transactionsToDiscard = transactionsForAccount.Where(t => t.Date >= dateOfFirstNewTransaction);
+        var transactionsToKeep = accountTransactions.Where(t => t.Date < dateOfFirstNewTransaction);
+        var transactionsToDiscard = accountTransactions.Where(t => t.Date >= dateOfFirstNewTransaction);
       
         // Copy categories from discard pile to keep pile.
         CopyCategories(transactionsToDiscard, newTransactions);
@@ -38,11 +52,61 @@ public class Transactions
                 throw new Exception($"Balance mismatch: {lastTransactionToKeep.Date} != {firstNewTransaction.Date}");
         }
 
-        // Append new transactions
-        transactions = transactionsToKeep.Concat(newTransactions);
+        // Set the new transactions for the account.
+        SetTransactionsWithoutSplits(account, transactionsToKeep.Concat(newTransactions));
+    }
 
-        // Return merged transactions.
-        return transactions;
+    /// <summary>
+    /// Sort transactions so that they are in order date, then account and their balances are consistent.
+    /// </summary>
+    public static IEnumerable<Transaction> Sort(IEnumerable<Transaction> transactions)
+    {
+        List<Transaction> sortedTransactions = new();
+
+        foreach (var account in transactions.Select(t => t.Account)
+                                            .Distinct())
+        {
+            var accountTransactions = transactions.Where(t => t.Account == account);
+            double currentBalance = double.MinValue;
+
+            foreach (var day in accountTransactions
+                .GroupBy(t => t.Date.Date)
+                .OrderBy(g => g.Key))
+            {
+                // Sort all transactions that are NOT a split transaction.
+                var remaining = day.Where(t => string.IsNullOrEmpty(t.Split)).ToList();
+                var sortedDay = new List<Transaction>(remaining.Count);
+
+                if (currentBalance == double.MinValue)
+                {
+                    // Find the transaction that can start the sequence.
+                    var first = FindFirstTransaction(remaining);
+                    remaining.Remove(first);
+                    sortedDay.Add(first);
+                    currentBalance = first.Balance;
+                }
+
+                if (!TrySortTransactions(remaining, currentBalance, sortedDay))
+                {
+                    // No consistent next transaction was found. Stop rather than silently inventing an order.
+                    throw new InvalidOperationException(
+                        $"Cannot reconstruct transaction sequence for {day.Key:yyyy-MM-dd}. " +
+                        $"Expected a transaction starting at balance {currentBalance:F2}.");
+                }
+
+                // Add sorted transactions for the day.
+                foreach (var transaction in sortedDay)
+                {
+                    sortedTransactions.Add(transaction);
+                    currentBalance = transaction.Balance;
+                }
+
+                // Now add any splits at the end of the day.
+                sortedTransactions.AddRange(day.Where(t => !string.IsNullOrEmpty(t.Split)));
+            }
+        }
+        // Order the transactions by Date then account.
+        return sortedTransactions.OrderBy(t => t.Date).ThenBy(t => t.Account);
     }
 
     /// <summary>
@@ -57,7 +121,7 @@ public class Transactions
         {
             var match = from.FirstOrDefault(f => CloseMatch(f, t));
             if (match == null)
-                t.Category = "??????";
+                t.Details = "??????";
             else
                 t.Category = match.Category;
         }        
@@ -85,45 +149,25 @@ public class Transactions
     }    
 
     /// <summary>
-    /// Sort transactions so that they are in order and their balances are consistent.
-    /// Some banks transactions are out-of-order for a given day.
+    /// Get all transactions for an account that are not split transactions.
     /// </summary>
-    /// <param name="transactions">The transactions to sort.</param>
-    public static IEnumerable<Transaction> Sort(IEnumerable<Transaction> transactions)
+    /// <param name="account"></param>
+    /// <returns></returns>
+    private IEnumerable<Transaction> TransactionsWithoutSplits(string account) 
+        => transactions.Where(t => t.Account == account && string.IsNullOrEmpty(t.Split));
+
+    /// <summary>
+    /// Set the transactions for an account, replacing any existing transactions for that account.
+    /// </summary>
+    /// <param name="account"></param>
+    /// <param name="newTransactions"></param>
+    private void SetTransactionsWithoutSplits(string account, IEnumerable<Transaction> newTransactions)
     {
-        double currentBalance = double.MinValue;
+        // Get transactions for other accounts and all splits.
+        var otherTransactions = transactions.Where(t => t.Account != account || !string.IsNullOrEmpty(t.Split));
 
-        foreach (var day in transactions
-            .GroupBy(t => t.Date.Date)
-            .OrderBy(g => g.Key))
-        {
-            var remaining = day.ToList();
-            var sortedDay = new List<Transaction>(remaining.Count);
-
-            if (currentBalance == double.MinValue)
-            {
-                // Find the transaction that can start the sequence.
-                var first = FindFirstTransaction(remaining);
-                remaining.Remove(first);
-                sortedDay.Add(first);
-                currentBalance = first.Balance;
-            }
-
-            if (!TrySortTransactions(remaining, currentBalance, sortedDay))
-            {
-                // No consistent next transaction was found. Stop rather than silently inventing an order.
-                throw new InvalidOperationException(
-                    $"Cannot reconstruct transaction sequence for {day.Key:yyyy-MM-dd}. " +
-                    $"Expected a transaction starting at balance {currentBalance:F2}.");
-            }
-
-            foreach (var transaction in sortedDay)
-            {
-                yield return transaction;
-                currentBalance = transaction.Balance;
-            }
-        }
-    }
+        transactions = Sort(otherTransactions.Concat(newTransactions));
+    }    
 
     /// <summary>
     /// Try to sort a sequence of transactions that are consistent with the current balance.
@@ -164,7 +208,8 @@ public class Transactions
     {
         foreach (var transaction in transactions)
         {
-            if (transactions.FirstOrDefault(t => t.Balance == transaction.PreviousBalance) == null)
+            if (transactions.Except([transaction])
+                            .FirstOrDefault(t => string.IsNullOrEmpty(t.Split) && t.Balance == transaction.PreviousBalance) == null)
                 return transaction;
         }
 
@@ -178,7 +223,7 @@ public class Transactions
     /// https://github.com/jernejk/MLSample.SimpleTransactionTagging
     /// </remarks>
     /// <param name="transactions">The collection of transaction instances.</param>
-    public static void PredictCategories(IEnumerable<Transaction> transactions)
+    public void PredictCategories()
     {
         var transactionsWithCategories = transactions.Where(t => !string.IsNullOrEmpty(t.Category));
 

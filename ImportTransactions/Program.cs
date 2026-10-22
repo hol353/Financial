@@ -28,7 +28,7 @@ class Program
                            .WithParsed<Options>(options =>
             {
                 // Open the cash book.
-                var transactions = Excel.Read<Transaction>(options.Cashbook, "Transactions");
+                Transactions transactions = new(Excel.Read<Transaction>(options.Cashbook, "Transactions"));
 
                 // Import transactions if there are any.
                 if (options.ImportPatterns != null)
@@ -41,19 +41,16 @@ class Program
                         Console.WriteLine($"Importing transactions from {fileName}");
                         var transactionsToImport = BankTransactionFile.Read(fileName);
                         if (transactionsToImport != null)
-                            transactions = Transactions.Merge(transactions, transactionsToImport);
+                            transactions.Import(transactionsToImport);
                     }
                 }
 
                 // Predict missing categories.
-                Transactions.PredictCategories(transactions);
-
-                // Order the transactions by Date then account.
-                transactions = transactions.OrderBy(t => t.Date).ThenBy(t => t.Account);
+                transactions.PredictCategories();
 
                 // Write spreadsheet.
                 Console.WriteLine($"Write to {options.Cashbook}");
-                Excel.Write(options.Cashbook, "Transactions", transactions);
+                Excel.Write(options.Cashbook, "Transactions", transactions.All);
             });
         }
         catch (Exception err)
